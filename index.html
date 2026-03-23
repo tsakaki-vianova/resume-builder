@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>履歴書・職務経歴書 作成ツール | 無料でExcel出力</title>
+<meta name="description" content="履歴書・職務経歴書をブラウザで簡単作成。PDF/Wordファイルのアップロードにも対応。体裁の整ったExcel(.xlsx)ファイルとして無料ダウンロード。">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#1e293b;--text-muted:#64748b;--success:#059669;--danger:#dc2626;--warning:#d97706;--radius:12px}
+body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans',Meiryo,'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh}
+.app-container{max-width:900px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:8px;color:var(--text)}
+.subtitle{text-align:center;color:var(--text-muted);font-size:.9rem;margin-bottom:32px}
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:#e2e8f0;border-radius:var(--radius);padding:4px}
+.tab{flex:1;padding:12px 16px;border:none;background:transparent;cursor:pointer;font-size:.95rem;font-weight:600;border-radius:calc(var(--radius) - 2px);color:var(--text-muted);transition:all .2s}
+.tab.active{background:var(--card);color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.tab:hover:not(.active){color:var(--text)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card-title{font-size:1.1rem;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--primary);color:var(--text);display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:1.2rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.form-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+label{font-size:.85rem;font-weight:600;color:var(--text)}
+input,select,textarea{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:.95rem;font-family:inherit;transition:border-color .2s;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+textarea{resize:vertical;min-height:100px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#047857}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:8px 16px;font-size:.85rem}
+.btn-block{width:100%}
+.entry-item{background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px;position:relative}
+.entry-item .remove-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--danger);cursor:pointer;font-size:1.2rem;padding:4px}
+.entry-grid{display:grid;grid-template-columns:80px 60px 1fr;gap:8px;align-items:end}
+.upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#fafbfc}
+.upload-area:hover,.upload-area.dragover{border-color:var(--primary);background:rgba(37,99,235,.03)}
+.upload-area .upload-icon{font-size:3rem;margin-bottom:12px}
+.upload-area p{color:var(--text-muted);font-size:.9rem}
+.upload-area .formats{font-size:.8rem;color:var(--text-muted);margin-top:8px}
+.actions{display:flex;gap:12px;justify-content:center;margin:32px 0;flex-wrap:wrap}
+.file-info{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-top:16px;display:flex;align-items:center;gap:12px}
+.file-info .check{color:var(--success);font-size:1.5rem}
+.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:14px 24px;border-radius:8px;font-size:.9rem;z-index:9999;animation:slideUp .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}.form-grid.cols-3{grid-template-columns:80px 60px 1fr}.tabs{flex-direction:column}.actions{flex-direction:column}.actions .btn{width:100%}}
+.section-note{font-size:.8rem;color:var(--text-muted);margin-bottom:12px;font-style:italic}
+.hidden{display:none}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999}
+.loading-box{background:#fff;padding:32px 48px;border-radius:12px;text-align:center;font-size:1rem;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.loading-box .spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app-container" id="app">
+  <h1>📄 履歴書・職務経歴書 作成ツール</h1>
+  <p class="subtitle">ブラウザで入力するだけ。体裁の整ったExcelファイルを無料ダウンロード</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('create')">✏️ 新規作成</button>
+    <button class="tab" onclick="switchTab('upload')">📤 アップロード変換</button>
+  </div>
+
+  <div id="tab-create">
+    <div class="tabs" style="max-width:400px;margin:0 auto 24px">
+      <button class="tab active" onclick="switchDocTab('resume')">履歴書</button>
+      <button class="tab" onclick="switchDocTab('career')">職務経歴書</button>
+    </div>
+
+    <div id="doc-resume">
+      <div class="card">
+        <div class="card-title"><span class="icon">👤</span>基本情報</div>
+        <div class="form-grid">
+          <div class="form-group"><label>姓（ふりがな）</label><input id="r-lastNameKana" placeholder="やまだ"></div>
+          <div class="form-group"><label>名（ふりがな）</label><input id="r-firstNameKana" placeholder="たろう"></div>
+          <div class="form-group"><label>姓</label><input id="r-lastName" placeholder="山田"></div>
+          <div class="form-group"><label>名</label><input id="r-firstName" placeholder="太郎"></div>
+          <div class="form-group"><label>生年月日</label><input id="r-birthDate" type="date"></div>
+          <div class="form-group"><label>性別</label>
+            <select id="r-gender"><option value="male">男性</option><option value="female">女性</option><option value="other">その他</option><option value="prefer_not_to_say" selected>回答しない</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🏠</span>住所</div>
+        <div class="form-grid">
+          <div class="form-group"><label>郵便番号</label><input id="r-postalCode" placeholder="1234567" maxlength="7"></div>
+          <div class="form-group"><label>都道府県</label>
+            <select id="r-prefecture"><option value="">選択してください</option></select>
+          </div>
+          <div class="form-group"><label>市区町村</label><input id="r-city" placeholder="渋谷区"></div>
+          <div class="form-group"><label>番地</label><input id="r-street" placeholder="1-2-3"></div>
+          <div class="form-group full"><label>建物名・部屋番号</label><input id="r-building" placeholder="○○マンション 101号室"></div>
+          <div class="form-group full"><label>住所ふりがな</label><input id="r-addressKana" placeholder="しぶやくしぶや"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📞</span>連絡先</div>
+        <div class="form-grid">
+          <div class="form-group"><label>電話番号</label><input id="r-phone" placeholder="03-1234-5678"></div>
+          <div class="form-group"><label>メールアドレス</label><input id="r-email" type="email" placeholder="taro@example.com"></div>
+          <div class="form-group full"><label>携帯電話番号</label><input id="r-mobile" placeholder="090-1234-5678"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🎓</span>学歴</div>
+        <p class="section-note">学歴を古い順に入力してください（最大4件）</p>
+        <div id="r-education-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addEntry('r-education')">＋ 学歴を追加</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">💼</span>職歴</div>
+        <p class="section-note">職歴を古い順に入力してください（最大4件）</p>
+        <div id="r-work-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addEntry('r-work')">＋ 職歴を追加</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📜</span>免許・資格</div>
+        <p class="section-note">最大6件まで入力できます</p>
+        <div id="r-license-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addEntry('r-license')">＋ 免許・資格を追加</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">💡</span>志望動機・自己PR</div>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="form-group"><label>志望動機・特技・好きな学科・アピールポイント等</label><textarea id="r-motivation" rows="4" placeholder="志望動機や特技、アピールポイントを入力してください"></textarea></div>
+          <div class="form-group"><label>本人希望記入欄</label><textarea id="r-requests" rows="3" placeholder="給与・勤務時間・勤務地などの希望を入力してください（未記入の場合は「貴社規定に従います。」と出力されます）"></textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="doc-career" class="hidden">
+      <div class="card">
+        <div class="card-title"><span class="icon">👤</span>基本情報</div>
+        <div class="form-grid">
+          <div class="form-group full"><label>氏名</label><input id="c-fullName" placeholder="山田 太郎"></div>
+          <div class="form-group full"><label>職務要約</label><textarea id="c-summary" rows="4" placeholder="これまでの職務経歴の概要を記入してください"></textarea></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🏢</span>職務経歴</div>
+        <p class="section-note">各社の経歴を新しい順に入力してください</p>
+        <div id="c-exp-list"></div>
+        <button class="btn btn-outline btn-sm" onclick="addExperience()">＋ 職務経歴を追加</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📜</span>保有資格・スキル</div>
+        <div class="form-group"><textarea id="c-qualSkills" rows="4" placeholder="・普通自動車第一種運転免許&#10;・TOEIC 800点&#10;・ITパスポート"></textarea></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">💡</span>自己PR</div>
+        <div class="form-group"><textarea id="c-selfPr" rows="5" placeholder="これまでの実績や強みをアピールしてください"></textarea></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="export-btn" onclick="exportToExcel()">📥 Excelダウンロード</button>
+    </div>
+  </div>
+
+  <div id="tab-upload" class="hidden">
+    <div class="card">
+      <div class="card-title"><span class="icon">📤</span>ファイルをアップロード</div>
+      <p class="section-note">PDF・Word(.docx)ファイルをアップロードすると、内容を読み取って体裁の整ったExcelに変換します</p>
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">📁</div>
+        <p><strong>ここにファイルをドロップ</strong><br>またはクリックしてファイルを選択</p>
+        <p class="formats">対応形式: PDF (.pdf) / Word (.docx)</p>
+      </div>
+      <input type="file" id="file-input" accept=".pdf,.docx" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div id="uploaded-files"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-success" id="convert-btn" onclick="convertUploadedFiles()" style="display:none">📥 Excelに変換してダウンロード</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Template Data (base64 encoded Excel templates) ──
+let RESUME_TPL = null; // loaded from external file
+let CAREER_TPL = null; // loaded from external file
+
+// ── Load templates from external files ──
+async function loadTemplates() {
+  try {
+    const [rRes, cRes] = await Promise.all([
+      fetch('resume_template.b64'),
+      fetch('career_template.b64')
+    ]);
+    RESUME_TPL = await rRes.text();
+    CAREER_TPL = await cRes.text();
+    console.log('Templates loaded successfully');
+  } catch(e) {
+    console.error('Failed to load templates:', e);
+    showToast('⚠️ テンプレートの読み込みに失敗しました。ページを再読み込みしてください。');
+  }
+}
+loadTemplates();
+
+// ── Utility functions ──
+function toFW(n) { return String(n).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0)); }
+
+function base64ToArrayBuffer(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function calcAge(birthDateStr) {
+  if (!birthDateStr) return '';
+  const bd = new Date(birthDateStr);
+  const now = new Date();
+  let age = now.getFullYear() - bd.getFullYear();
+  if (now.getMonth() < bd.getMonth() || (now.getMonth() === bd.getMonth() && now.getDate() < bd.getDate())) age--;
+  return age;
+}
+
+function showLoading(msg) {
+  const div = document.createElement('div');
+  div.className = 'loading-overlay';
+  div.id = 'loading';
+  div.innerHTML = `<div class="loading-box"><div class="spinner"></div>${msg || 'Excel生成中...'}</div>`;
+  document.body.appendChild(div);
+}
+function hideLoading() { const el = document.getElementById('loading'); if (el) el.remove(); }
+
+function downloadBuffer(buffer, filename) {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Prefectures ──
+const prefs = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
+const prefSelect = document.getElementById('r-prefecture');
+prefs.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; prefSelect.appendChild(o); });
+
+// ── PDF.js worker ──
+if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.tabs')[0].querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'create' ? 0 : 1)));
+  document.getElementById('tab-create').classList.toggle('hidden', tab !== 'create');
+  document.getElementById('tab-upload').classList.toggle('hidden', tab !== 'upload');
+}
+function switchDocTab(doc) {
+  document.querySelectorAll('#tab-create .tabs')[0].querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (doc === 'resume' ? 0 : 1)));
+  document.getElementById('doc-resume').classList.toggle('hidden', doc !== 'resume');
+  document.getElementById('doc-career').classList.toggle('hidden', doc !== 'career');
+}
+
+// ── Dynamic entry helpers ──
+let entryCounters = {};
+function addEntry(type, yearVal, monthVal, descVal) {
+  if (!entryCounters[type]) entryCounters[type] = 0;
+  entryCounters[type]++;
+  const id = entryCounters[type];
+  const list = document.getElementById(type + '-list');
+  const div = document.createElement('div');
+  div.className = 'entry-item';
+  div.id = type + '-' + id;
+  div.innerHTML = `<button class="remove-btn" onclick="this.parentElement.remove()" title="削除">✕</button>
+    <div class="entry-grid">
+      <div class="form-group"><label>年</label><input class="ey" value="${yearVal||''}" placeholder="2024" type="number" min="1950" max="2030"></div>
+      <div class="form-group"><label>月</label><input class="em" value="${monthVal||''}" placeholder="4" type="number" min="1" max="12"></div>
+      <div class="form-group"><label>内容</label><input class="ed" value="${descVal||''}" placeholder="${type.includes('license') || type.includes('qual') ? '○○免許 取得' : '○○大学 入学'}"></div>
+    </div>`;
+  list.appendChild(div);
+}
+function getEntries(type) {
+  const items = document.querySelectorAll('#' + type + '-list .entry-item');
+  return Array.from(items).map(item => ({
+    year: parseInt(item.querySelector('.ey').value) || 0,
+    month: parseInt(item.querySelector('.em').value) || 0,
+    description: item.querySelector('.ed').value || ''
+  })).filter(e => e.description);
+}
+
+// ── Experience (career history) ──
+let expCounter = 0;
+function addExperience(data) {
+  expCounter++;
+  const d = data || {};
+  const list = document.getElementById('c-exp-list');
+  const div = document.createElement('div');
+  div.className = 'entry-item';
+  div.innerHTML = `<button class="remove-btn" onclick="this.parentElement.remove()" title="削除">✕</button>
+    <div class="form-grid">
+      <div class="form-group full"><label>会社名</label><input class="exp-company" value="${d.companyName||''}" placeholder="株式会社○○"></div>
+      <div class="form-group full"><label>事業内容</label><input class="exp-business" value="${d.businessDescription||''}" placeholder="IT・ソフトウェア開発"></div>
+      <div class="form-group"><label>雇用形態</label>
+        <select class="exp-type"><option value="正社員" ${d.employmentType==='正社員'?'selected':''}>正社員</option><option value="契約社員">契約社員</option><option value="パート・アルバイト">パート・アルバイト</option><option value="派遣社員">派遣社員</option><option value="業務委託">業務委託</option></select>
+      </div>
+      <div class="form-group"><label>従業員数</label><input class="exp-emp" value="${d.employeeCount||''}" placeholder="100名"></div>
+      <div class="form-group"><label>入社年月</label><input class="exp-start" value="${d.startDate||''}" placeholder="2020年4月" type="text"></div>
+      <div class="form-group"><label>退社年月（在職中は空欄）</label><input class="exp-end" value="${d.endDate||''}" placeholder="2024年3月" type="text"></div>
+      <div class="form-group full"><label>職種・ポジション</label><input class="exp-pos" value="${d.position||''}" placeholder="営業職"></div>
+      <div class="form-group full"><label>担当業務</label><textarea class="exp-duties" rows="3" placeholder="担当業務の詳細を記入">${d.duties||''}</textarea></div>
+      <div class="form-group full"><label>実績・成果</label><textarea class="exp-achievements" rows="2" placeholder="数値で示せる実績があれば記入">${d.achievements||''}</textarea></div>
+      <div class="form-group full"><label>ポイント・工夫した点</label><textarea class="exp-points" rows="2" placeholder="工夫した点やアピールポイント">${d.points||''}</textarea></div>
+    </div>`;
+  list.appendChild(div);
+}
+function getExperiences() {
+  return Array.from(document.querySelectorAll('#c-exp-list .entry-item')).map(item => ({
+    companyName: item.querySelector('.exp-company').value,
+    businessDescription: item.querySelector('.exp-business').value,
+    employmentType: item.querySelector('.exp-type').value,
+    employeeCount: item.querySelector('.exp-emp').value,
+    startDate: item.querySelector('.exp-start').value,
+    endDate: item.querySelector('.exp-end').value,
+    position: item.querySelector('.exp-pos').value,
+    duties: item.querySelector('.exp-duties').value,
+    achievements: item.querySelector('.exp-achievements').value,
+    points: item.querySelector('.exp-points') ? item.querySelector('.exp-points').value : '',
+  }));
+}
+
+// ── Collect form data ──
+function getResumeData() {
+  return {
+    lastNameKana: document.getElementById('r-lastNameKana').value,
+    firstNameKana: document.getElementById('r-firstNameKana').value,
+    lastName: document.getElementById('r-lastName').value,
+    firstName: document.getElementById('r-firstName').value,
+    birthDate: document.getElementById('r-birthDate').value,
+    gender: document.getElementById('r-gender').value,
+    postalCode: document.getElementById('r-postalCode').value,
+    prefecture: document.getElementById('r-prefecture').value,
+    city: document.getElementById('r-city').value,
+    street: document.getElementById('r-street').value,
+    building: document.getElementById('r-building').value,
+    addressKana: document.getElementById('r-addressKana').value,
+    phone: document.getElementById('r-phone').value,
+    email: document.getElementById('r-email').value,
+    mobile: document.getElementById('r-mobile').value,
+    education: getEntries('r-education'),
+    workHistory: getEntries('r-work'),
+    licenses: getEntries('r-license'),
+    motivation: document.getElementById('r-motivation').value,
+    requests: document.getElementById('r-requests').value,
+  };
+}
+function getCareerData() {
+  return {
+    fullName: document.getElementById('c-fullName').value,
+    summary: document.getElementById('c-summary').value,
+    experiences: getExperiences(),
+    qualSkills: document.getElementById('c-qualSkills').value,
+    selfPr: document.getElementById('c-selfPr').value,
+  };
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+// ═══════════════════════════════════════════════
+// EXCEL EXPORT (Template-based with ExcelJS)
+// ═══════════════════════════════════════════════
+
+async function exportToExcel() {
+  const resume = getResumeData();
+  const career = getCareerData();
+  const hasResume = resume.lastName || resume.firstName;
+  const hasCareer = career.fullName || career.experiences.length > 0;
+  if (!hasResume && !hasCareer) { showToast('⚠️ データを入力してください'); return; }
+
+  showLoading('Excel生成中...');
+  const btn = document.getElementById('export-btn');
+  btn.disabled = true;
+
+  try {
+    if (hasResume && hasCareer) {
+      // Both: create separate files
+      await createResumeExcel(resume);
+      await createCareerExcel(career);
+      showToast('✅ 履歴書・職務経歴書をダウンロードしました');
+    } else if (hasResume) {
+      await createResumeExcel(resume);
+      showToast('✅ 履歴書をダウンロードしました');
+    } else {
+      await createCareerExcel(career);
+      showToast('✅ 職務経歴書をダウンロードしました');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('⚠️ エラーが発生しました: ' + e.message);
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+  }
+}
+
+// ── Resume Excel (template-based) ──
+async function createResumeExcel(d) {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(base64ToArrayBuffer(RESUME_TPL));
+  const ws = wb.getWorksheet('履歴書');
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 現在`;
+
+  // Date
+  ws.getCell('E2').value = todayStr;
+
+  // Furigana name
+  const kana = ((d.lastNameKana || '') + '　' + (d.firstNameKana || '')).trim();
+  ws.getCell('D4').value = kana;
+
+  // Full name
+  const name = ((d.lastName || '') + '　' + (d.firstName || '')).trim();
+  ws.getCell('B6').value = name;
+
+  // Birth date + age
+  if (d.birthDate) {
+    const bd = new Date(d.birthDate);
+    const age = calcAge(d.birthDate);
+    ws.getCell('B9').value = `　　　　${toFW(bd.getFullYear())}年　${toFW(bd.getMonth() + 1)}月　${toFW(bd.getDate())}日生（満${toFW(age)}歳）　`;
+  }
+
+  // Gender
+  const gMap = { male: '男', female: '女', other: '', prefer_not_to_say: '' };
+  if (d.gender && gMap[d.gender]) {
+    ws.getCell('H9').value = `※性別　${gMap[d.gender]}`;
+  }
+
+  // Address furigana
+  if (d.addressKana) {
+    ws.getCell('C11').value = d.addressKana;
+  }
+
+  // Full address
+  const postal = d.postalCode ? '〒' + d.postalCode.replace(/(\d{3})(\d{4})/, '$1-$2') : '';
+  const addrParts = [d.prefecture, d.city, d.street].filter(Boolean).join('');
+  const addrLines = [' 現住所　', postal, addrParts, d.building].filter(Boolean);
+  ws.getCell('B12').value = addrLines.join('\n');
+
+  // Phone
+  ws.getCell('I13').value = d.phone || d.mobile || '';
+
+  // Email
+  ws.getCell('I18').value = d.email || '';
+
+  // ── Education entries (left side: rows 27,29,31,33) ──
+  ws.getCell('D25').value = '学歴';
+  const eduRows = [27, 29, 31, 33];
+  d.education.slice(0, 4).forEach((e, i) => {
+    const r = eduRows[i];
+    ws.getCell(`B${r}`).value = e.year ? toFW(e.year) : '';
+    ws.getCell(`C${r}`).value = e.month ? toFW(e.month) : '';
+    ws.getCell(`D${r}`).value = e.description;
+  });
+
+  // ── "職歴" label and work entries ──
+  // Calculate where to put "職歴" based on education entries
+  // Fixed positions: 職歴 label at row 36, work entries at 38, 39(desc), 41, 43
+  if (d.workHistory.length > 0 || d.education.length > 0) {
+    ws.getCell('D36').value = '職歴';
+  }
+
+  const workMainRows = [38]; // First work entry
+  const workDescRow = 39; // Description of first work
+  const workMoreRows = [41, 43]; // Additional work entries
+
+  if (d.workHistory.length > 0) {
+    // First work entry
+    const w0 = d.workHistory[0];
+    ws.getCell('B38').value = w0.year ? toFW(w0.year) : '';
+    ws.getCell('C38').value = w0.month ? toFW(w0.month) : '';
+    ws.getCell('D38').value = w0.description;
+
+    // If only one work entry, put "現在に至る" and "以上"
+    if (d.workHistory.length === 1) {
+      ws.getCell('D41').value = '現在に至る';
+      ws.getCell('D45').value = '以上';
+    } else {
+      // Multiple work entries
+      d.workHistory.slice(1, 4).forEach((w, i) => {
+        const r = [39, 41, 43][i];
+        if (r) {
+          if (r === 39) {
+            ws.getCell(`D${r}`).value = w.description;
+            ws.getCell(`B${r}`).value = w.year ? toFW(w.year) : '';
+            ws.getCell(`C${r}`).value = w.month ? toFW(w.month) : '';
+          } else {
+            ws.getCell(`B${r}`).value = w.year ? toFW(w.year) : '';
+            ws.getCell(`C${r}`).value = w.month ? toFW(w.month) : '';
+            ws.getCell(`D${r}`).value = w.description;
+          }
+        }
+      });
+      // "以上" at the end
+      const lastWorkIdx = Math.min(d.workHistory.length, 4);
+      const yijouRow = [41, 43, 45, 47][lastWorkIdx - 1];
+      if (yijouRow && yijouRow <= 47) {
+        ws.getCell(`D${yijouRow}`).value = '以上';
+      }
+    }
+  }
+
+  // ── Licenses (right side) ──
+  // License rows: 17, 20, then 21, 24, 26, 28
+  const licRows = [17, 20, 21, 24, 26, 28];
+  d.licenses.slice(0, 6).forEach((lic, i) => {
+    const r = licRows[i];
+    ws.getCell(`L${r}`).value = lic.year ? toFW(lic.year) : '';
+    ws.getCell(`M${r}`).value = lic.month ? toFW(lic.month) : '';
+    ws.getCell(`N${r}`).value = lic.description;
+  });
+
+  // ── Motivation ──
+  ws.getCell('L32').value = d.motivation || '';
+
+  // ── Requests ──
+  ws.getCell('L42').value = d.requests || '貴社規定に従います。';
+
+  // Export
+  const buffer = await wb.xlsx.writeBuffer();
+  const today = now.toISOString().slice(0, 10).replace(/-/g, '');
+  downloadBuffer(buffer, `履歴書_${today}.xlsx`);
+}
+
+// ── Career History Excel (template-based) ──
+async function createCareerExcel(d) {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(base64ToArrayBuffer(CAREER_TPL));
+  const ws = wb.worksheets[0]; // Use first sheet regardless of name
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日現在`;
+
+  // Date and name
+  ws.getCell('E2').value = todayStr;
+  ws.getCell('E3').value = `氏名　${d.fullName || ''}`;
+
+  // Summary
+  ws.getCell('B6').value = d.summary ? `　${d.summary}` : '';
+
+  // ── Experiences ──
+  // Template has 3 company blocks with headers at rows 9, 27(?), and 41(?)
+  // Actually, looking at the template structure:
+  // Block 1: rows 9-26 (company at B9, details in rows 10-26)
+  // Block 2: rows 27-39 (continuation of block 1 OR second company)
+  // Block 3: rows 40-53 (third block)
+  //
+  // The template has "期間"/"職務内容" headers at rows 12, 40, 48
+  // Company name rows at: 9 (B9:G9 merged)
+  //
+  // For simplicity, fill the first company block fully,
+  // then the second and third as available.
+
+  if (d.experiences.length > 0) {
+    const exp = d.experiences[0];
+    const period = (exp.startDate || '') + '～' + (exp.endDate || '現在');
+
+    // Company name + period
+    ws.getCell('B9').value = `${period}　　${exp.companyName || ''}　`;
+
+    // Business description
+    ws.getCell('B10').value = `事業内容：${exp.businessDescription || ''}`;
+    ws.getCell('F10').value = `${exp.employmentType || '正社員'}として勤務`;
+
+    // Employee count / revenue
+    ws.getCell('B11').value = `従業員数：　${exp.employeeCount || ''}`;
+
+    // Period and position
+    ws.getCell('B13').value = `${exp.startDate || ''}\n～\n${exp.endDate || '現在'}`;
+    ws.getCell('D13').value = exp.position || '';
+
+    // Duties
+    ws.getCell('D14').value = '【担当業務】';
+    ws.getCell('E15').value = exp.duties || '';
+
+    // Achievements
+    ws.getCell('D16').value = '【実績】';
+    ws.getCell('E17').value = exp.achievements || '';
+
+    // Points
+    ws.getCell('D18').value = '【ポイント】';
+    ws.getCell('E19').value = exp.points || '';
+  }
+
+  // Second experience (if exists) - use second position block (rows 20-26)
+  if (d.experiences.length > 1) {
+    const exp2 = d.experiences[1];
+    ws.getCell('B20').value = `${exp2.startDate || ''}\n～\n${exp2.endDate || '現在'}`;
+    ws.getCell('D20').value = exp2.position || exp2.companyName || '';
+    ws.getCell('D21').value = '【担当業務】';
+    ws.getCell('E22').value = exp2.duties || '';
+    ws.getCell('D23').value = '【実績】';
+    ws.getCell('E24').value = exp2.achievements || '';
+    ws.getCell('D25').value = '【ポイント】';
+    ws.getCell('E26').value = exp2.points || '';
+  }
+
+  // Third experience (if exists) - use third block (rows 27-33 or 41-47)
+  if (d.experiences.length > 2) {
+    const exp3 = d.experiences[2];
+    ws.getCell('B41').value = `${exp3.startDate || ''}\n～\n${exp3.endDate || '現在'}`;
+    ws.getCell('D41').value = exp3.position || exp3.companyName || '';
+    ws.getCell('D42').value = '【担当業務】';
+    ws.getCell('E43').value = exp3.duties || '';
+    ws.getCell('D44').value = '【実績】';
+    ws.getCell('E45').value = exp3.achievements || '';
+    ws.getCell('D46').value = '【ポイント】';
+    ws.getCell('E47').value = exp3.points || '';
+  }
+
+  // Qualifications / Skills
+  ws.getCell('B56').value = d.qualSkills || '';
+
+  // Self PR
+  ws.getCell('B59').value = d.selfPr || '';
+
+  // Export
+  const buffer = await wb.xlsx.writeBuffer();
+  const today = now.toISOString().slice(0, 10).replace(/-/g, '');
+  downloadBuffer(buffer, `職務経歴書_${today}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════
+// UPLOAD & CONVERT (uses ExcelJS for output)
+// ═══════════════════════════════════════════════
+let uploadedFiles = [];
+
+const uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'pdf' && ext !== 'docx') { showToast('⚠️ PDF・Wordファイルのみ対応しています'); return; }
+    uploadedFiles.push(file);
+    renderUploadedFiles();
+  });
+}
+
+function renderUploadedFiles() {
+  const container = document.getElementById('uploaded-files');
+  container.innerHTML = '';
+  uploadedFiles.forEach((file, i) => {
+    const div = document.createElement('div');
+    div.className = 'file-info';
+    div.innerHTML = `<span class="check">✅</span><div><strong>${file.name}</strong><br><span style="font-size:.8rem;color:var(--text-muted)">${(file.size / 1024).toFixed(1)} KB</span></div>
+      <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="removeFile(${i})">削除</button>`;
+    container.appendChild(div);
+  });
+  document.getElementById('convert-btn').style.display = uploadedFiles.length > 0 ? 'inline-flex' : 'none';
+}
+function removeFile(i) { uploadedFiles.splice(i, 1); renderUploadedFiles(); }
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function extractTextFromDocx(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+async function convertUploadedFiles() {
+  if (uploadedFiles.length === 0) return;
+  showLoading('ファイルを読み取り中...');
+
+  try {
+    const wb = new ExcelJS.Workbook();
+
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
+      const ext = file.name.split('.').pop().toLowerCase();
+      let text = '';
+      try {
+        if (ext === 'pdf') text = await extractTextFromPDF(file);
+        else if (ext === 'docx') text = await extractTextFromDocx(file);
+      } catch (e) {
+        showToast('⚠️ ' + file.name + ' の読み取りに失敗しました');
+        continue;
+      }
+
+      const sheetName = file.name.replace(/\.[^.]+$/, '').substring(0, 31);
+      const parsed = parseDocumentText(text, file.name);
+      addFormattedSheet(wb, sheetName, parsed);
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    downloadBuffer(buffer, `変換済_${today}.xlsx`);
+    showToast('✅ Excelファイルをダウンロードしました');
+  } catch (e) {
+    console.error(e);
+    showToast('⚠️ 変換エラー: ' + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+function parseDocumentText(text, filename) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const isResume = filename.includes('履歴書') || lines.some(l => l.includes('履歴書'));
+  const isCareer = filename.includes('職務経歴') || lines.some(l => l.includes('職務経歴'));
+  const sections = [];
+  let currentSection = { title: isResume ? '履歴書' : isCareer ? '職務経歴書' : 'ドキュメント', content: [] };
+  const sectionKeywords = ['基本情報', '氏名', '住所', '連絡先', '学歴', '職歴', '免許', '資格', '志望動機', '自己PR', '職務要約', '職務経歴', 'スキル', '経験', '保有資格', '本人希望', 'アピール'];
+  lines.forEach(line => {
+    const isHeader = sectionKeywords.some(kw => line.includes(kw)) && line.length < 30;
+    if (isHeader) {
+      if (currentSection.content.length > 0) sections.push({ ...currentSection });
+      currentSection = { title: line.replace(/[【】■□●○▪▫・]/g, '').trim(), content: [] };
+    } else {
+      currentSection.content.push(line);
+    }
+  });
+  if (currentSection.content.length > 0) sections.push(currentSection);
+  return { type: isResume ? 'resume' : isCareer ? 'career' : 'other', sections };
+}
+
+function addFormattedSheet(wb, sheetName, parsed) {
+  const ws = wb.addWorksheet(sheetName);
+  const headerFont = { name: 'HiraMinProN-W3', size: 14, bold: true };
+  const normalFont = { name: 'HiraMinProN-W3', size: 11 };
+  const sectionFont = { name: 'HiraMinProN-W3', size: 11, bold: true };
+
+  let row = 1;
+  // Title
+  ws.mergeCells(`A${row}:D${row}`);
+  const titleCell = ws.getCell(`A${row}`);
+  titleCell.value = parsed.type === 'resume' ? '履歴書' : parsed.type === 'career' ? '職務経歴書' : 'ドキュメント内容';
+  titleCell.font = headerFont;
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  row++;
+
+  ws.getCell(`A${row}`).value = '変換日';
+  ws.getCell(`A${row}`).font = normalFont;
+  ws.getCell(`B${row}`).value = new Date().toLocaleDateString('ja-JP');
+  ws.getCell(`B${row}`).font = normalFont;
+  row += 2;
+
+  parsed.sections.forEach(section => {
+    const sCell = ws.getCell(`A${row}`);
+    sCell.value = '【' + section.title + '】';
+    sCell.font = sectionFont;
+    row++;
+
+    section.content.forEach(line => {
+      const kvMatch = line.match(/^(.+?)[：:](.+)$/);
+      if (kvMatch) {
+        ws.getCell(`A${row}`).value = kvMatch[1].trim();
+        ws.getCell(`A${row}`).font = normalFont;
+        ws.getCell(`B${row}`).value = kvMatch[2].trim();
+        ws.getCell(`B${row}`).font = normalFont;
+      } else {
+        ws.getCell(`A${row}`).value = line;
+        ws.getCell(`A${row}`).font = normalFont;
+      }
+      row++;
+    });
+    row++;
+  });
+
+  ws.getColumn(1).width = 20;
+  ws.getColumn(2).width = 50;
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.className = 'toast';
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 3000);
+}
+
+// ── Init ──
+addEntry('r-education');
+addEntry('r-work');
+addEntry('r-license');
+</script></body></html>
